@@ -23,7 +23,7 @@ import {
 import { motion } from 'framer-motion';
 
 export default function OrdersList() {
-  const { orders, deleteOrder } = useOrder();
+  const { orders, deleteOrder, updateOrder } = useOrder();
   const { clients } = useData();
   const { user } = useAuth();
   const [searchTerm, setSearchTerm] = useState('');
@@ -34,6 +34,21 @@ export default function OrdersList() {
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(10);
   const [statusModalOrder, setStatusModalOrder] = useState<string | null>(null);
+
+  const updateOrderStatus = (orderId: string, newStatus: 'en_attente' | 'livre' | 'annule') => {
+    const order = orders.find(o => o.id === orderId);
+    if (!order) return;
+
+    // Si on change le statut vers "annulé", on doit restaurer le stock
+    if (newStatus === 'annule' && order.status === 'livre') {
+      // Le stock sera automatiquement recalculé car on ne compte plus cette commande comme livrée
+    }
+    
+    // Si on change le statut vers "livré", le stock sera automatiquement mis à jour
+    // car le calcul du stock prend en compte les commandes avec statut "livre"
+    
+    updateOrder(orderId, { status: newStatus });
+  };
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -563,6 +578,7 @@ export default function OrdersList() {
           isOpen={!!statusModalOrder}
           onClose={() => setStatusModalOrder(null)}
           order={orders.find(o => o.id === statusModalOrder)!}
+          onUpdateStatus={updateOrderStatus}
         />
       )}
     </div>
