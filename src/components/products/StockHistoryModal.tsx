@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { useData } from '../../contexts/DataContext';
 import { useOrder } from '../../contexts/OrderContext';
-import { useOrder } from '../../contexts/OrderContext';
 import { Product } from '../../contexts/DataContext';
 import Modal from '../common/Modal';
 import EnhancedStockEvolutionChart from './EnhancedStockEvolutionChart';
@@ -280,8 +279,8 @@ export default function StockHistoryModal({ isOpen, onClose, product }: StockHis
                 <div className="text-xs text-blue-700 dark:text-blue-300">Stock initial</div>
               </div>
               <div className="text-center p-3 bg-white dark:bg-gray-800 rounded-lg border border-red-200 dark:border-red-600">
-                <div className="text-lg font-bold text-red-600">{summary.totalSales.toFixed(3)}</div>
-                <div className="text-xs text-red-700 dark:text-red-300">Total vendu</div>
+                <div className="text-lg font-bold text-red-600">{summary.totalOrdersSold.toFixed(3)}</div>
+                <div className="text-xs text-red-700 dark:text-red-300">Total commandé</div>
               </div>
               <div className="text-center p-3 bg-white dark:bg-gray-800 rounded-lg border border-purple-200 dark:border-purple-600">
                 <div className={`text-lg font-bold ${summary.totalAdjustments >= 0 ? 'text-green-600' : 'text-red-600'}`}>
@@ -297,8 +296,52 @@ export default function StockHistoryModal({ isOpen, onClose, product }: StockHis
           )}
         </div>
 
-       
-
+        {/* Filtres */}
+        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Période
+              </label>
+              <select
+                value={selectedPeriod}
+                onChange={(e) => setSelectedPeriod(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+              >
+                <option value="all">Toute la période</option>
+                <option value="week">7 derniers jours</option>
+                <option value="month">30 derniers jours</option>
+                <option value="quarter">3 derniers mois</option>
+              </select>
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Type de mouvement
+              </label>
+              <select
+                value={filterType}
+                onChange={(e) => setFilterType(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+              >
+                <option value="all">Tous les mouvements</option>
+                <option value="orders">Commandes uniquement</option>
+                <option value="adjustments">Rectifications uniquement</option>
+                <option value="initial">Stock initial</option>
+              </select>
+            </div>
+            
+            <div className="flex items-end">
+              <button
+                onClick={exportStockReport}
+                className="w-full inline-flex items-center justify-center space-x-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors"
+              >
+                <Download className="w-4 h-4" />
+                <span>Export CSV</span>
+              </button>
+            </div>
+          </div>
+        </div>
 
         <div className="max-h-96 overflow-y-auto">
           <div className="space-y-3">
@@ -345,6 +388,33 @@ export default function StockHistoryModal({ isOpen, onClose, product }: StockHis
                           </div>
                         )}
                       </div>
+                      {movement.orderId && (
+                        <button
+                          onClick={() => handleViewOrder(movement.orderId!)}
+                          className="inline-flex items-center space-x-1 px-2 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300 rounded-full text-xs hover:bg-blue-200 dark:hover:bg-blue-900/50 transition-colors"
+                          title="Voir la commande"
+                        >
+                          <ExternalLink className="w-3 h-3" />
+                          <span>Commande</span>
+                        </button>
+                      )}
+                      {movement.orderDetails && (
+                        <div className="flex items-center space-x-1">
+                          <span className="text-xs bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300 px-2 py-1 rounded">
+                            {movement.orderDetails.clientName}
+                          </span>
+                        </div>
+                      )}
+                      {movement.orderDetails && (
+                        <div className="mt-2 p-2 bg-blue-50 dark:bg-blue-900/20 rounded border border-blue-200 dark:border-blue-700">
+                          <div className="text-xs text-blue-800 dark:text-blue-300 space-y-1">
+                            <p><strong>Commande:</strong> {movement.orderDetails.orderNumber}</p>
+                            <p><strong>Client:</strong> {movement.orderDetails.clientName} ({movement.orderDetails.clientType === 'personne_physique' ? 'Particulier' : 'Société'})</p>
+                            <p><strong>Total commande:</strong> {movement.orderDetails.orderTotal.toLocaleString()} MAD</p>
+                            <p><strong>Date commande:</strong> {new Date(movement.orderDetails.orderDate).toLocaleDateString('fr-FR')}</p>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </div>
                   
@@ -355,8 +425,8 @@ export default function StockHistoryModal({ isOpen, onClose, product }: StockHis
                     <div className="text-xs text-gray-400 dark:text-gray-500">
                       Stock après mouvement
                     </div>
-            <div className="text-lg font-bold text-red-600">{summary.totalOrdersSold.toFixed(3)}</div>
-            <div className="text-xs text-red-700 dark:text-red-300">Total commandé</div>
+                  </div>
+                </div>
               ))
             ) : (
               <div className="text-center py-8">
@@ -370,179 +440,107 @@ export default function StockHistoryModal({ isOpen, onClose, product }: StockHis
           </div>
         </div>
 
-    {/* Filtres */}
-    <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div>
-                    {movement.orderId && (
-                      <button
-                        onClick={() => handleViewOrder(movement.orderId!)}
-                        className="inline-flex items-center space-x-1 px-2 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300 rounded-full text-xs hover:bg-blue-200 dark:hover:bg-blue-900/50 transition-colors"
-                        title="Voir la commande"
-                      >
-                        <ExternalLink className="w-3 h-3" />
-                        <span>Commande</span>
-                      </button>
-                    )}
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-            Période
-          </label>
-          <select
-                      <span>{new Date(movement.date).toLocaleDateString('fr-FR')}</span>
-            onChange={(e) => setSelectedPeriod(e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
-          >
-                      <span>{new Date(movement.date).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}</span>
-            <option value="week">7 derniers jours</option>
-            <option value="month">30 derniers jours</option>
-            <option value="quarter">3 derniers mois</option>
-          </select>
-        </div>
-        
-        <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-            Type de mouvement
-          </label>
-          <select
-            value={filterType}
-            onChange={(e) => setFilterType(e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
-          >
-            <option value="all">Tous les mouvements</option>
-            <option value="orders">Commandes uniquement</option>
-            <option value="adjustments">Rectifications uniquement</option>
-                    {movement.orderDetails && (
-                      <div className="flex items-center space-x-1">
-                        <span className="text-xs bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300 px-2 py-1 rounded">
-                          {movement.orderDetails.clientName}
-                        </span>
+        {/* Modal de visualisation de commande */}
+        {viewingOrder && (
+          <div className="fixed inset-0 z-[60] bg-black bg-opacity-50 flex items-center justify-center p-4">
+            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl max-w-2xl w-full max-h-[80vh] overflow-y-auto">
+              <div className="p-6 border-b border-gray-200 dark:border-gray-700">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Détails de la Commande</h3>
+                  <button
+                    onClick={() => setViewingOrder(null)}
+                    className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+                  >
+                    <X className="w-5 h-5 text-gray-500" />
+                  </button>
+                </div>
+              </div>
+              <div className="p-6">
+                {(() => {
+                  const order = getOrderById(viewingOrder);
+                  if (!order) {
+                    return (
+                      <div className="text-center py-8">
+                        <p className="text-gray-500 dark:text-gray-400">Commande non trouvée</p>
                       </div>
-                    )}
-            <option value="initial">Stock initial</option>
-                  {movement.orderDetails && (
-                    <div className="mt-2 p-2 bg-blue-50 dark:bg-blue-900/20 rounded border border-blue-200 dark:border-blue-700">
-                      <div className="text-xs text-blue-800 dark:text-blue-300 space-y-1">
-                        <p><strong>Commande:</strong> {movement.orderDetails.orderNumber}</p>
-                        <p><strong>Client:</strong> {movement.orderDetails.clientName} ({movement.orderDetails.clientType === 'personne_physique' ? 'Particulier' : 'Société'})</p>
-                        <p><strong>Total commande:</strong> {movement.orderDetails.orderTotal.toLocaleString()} MAD</p>
-                        <p><strong>Date commande:</strong> {new Date(movement.orderDetails.orderDate).toLocaleDateString('fr-FR')}</p>
+                    );
+                  }
+                  
+                  return (
+                    <div className="space-y-4">
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <p className="text-sm text-gray-600 dark:text-gray-400">Numéro de commande</p>
+                          <p className="font-medium text-gray-900 dark:text-gray-100">{order.number}</p>
+                        </div>
+                        <div>
+                          <p className="text-sm text-gray-600 dark:text-gray-400">Date</p>
+                          <p className="font-medium text-gray-900 dark:text-gray-100">
+                            {new Date(order.orderDate).toLocaleDateString('fr-FR')}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-sm text-gray-600 dark:text-gray-400">Client</p>
+                          <p className="font-medium text-gray-900 dark:text-gray-100">
+                            {order.clientType === 'personne_physique' ? order.clientName : order.client?.name}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-sm text-gray-600 dark:text-gray-400">Total</p>
+                          <p className="font-medium text-gray-900 dark:text-gray-100">{order.totalTTC.toLocaleString()} MAD</p>
+                        </div>
+                      </div>
+                      
+                      <div>
+                        <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">Articles commandés</p>
+                        <div className="space-y-2">
+                          {order.items.map((item, index) => (
+                            <div key={index} className={`p-3 rounded-lg border ${
+                              item.productName === product.name 
+                                ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-700' 
+                                : 'bg-gray-50 dark:bg-gray-700 border-gray-200 dark:border-gray-600'
+                            }`}>
+                              <div className="flex justify-between items-center">
+                                <span className="font-medium text-gray-900 dark:text-gray-100">{item.productName}</span>
+                                <span className="text-sm text-gray-600 dark:text-gray-300">
+                                  {item.quantity.toFixed(3)} × {item.unitPrice.toFixed(2)} MAD = {item.total.toFixed(2)} MAD
+                                </span>
+                              </div>
+                              {item.productName === product.name && (
+                                <div className="text-xs text-blue-600 dark:text-blue-400 mt-1">
+                                  ← Ce produit dans cette commande
+                                </div>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                      
+                      <div className="flex justify-end space-x-3">
+                        <button
+                          onClick={() => setViewingOrder(null)}
+                          className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                        >
+                          Fermer
+                        </button>
+                        <a
+                          href={`/commandes/${order.id}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center space-x-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors"
+                        >
+                          <Eye className="w-4 h-4" />
+                          <span>Voir commande complète</span>
+                        </a>
                       </div>
                     </div>
-                  )}
-          </select>
-        </div>
-        
-        <div className="flex items-end">
-          <button
-            onClick={exportStockReport}
-            className="w-full inline-flex items-center justify-center space-x-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors"
-          >
-            <Download className="w-4 h-4" />
-            <span>Export CSV</span>
-          </button>
-        </div>
-      </div>
-    {/* Modal de visualisation de commande */}
-    {viewingOrder && (
-      <div className="fixed inset-0 z-[60] bg-black bg-opacity-50 flex items-center justify-center p-4">
-        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl max-w-2xl w-full max-h-[80vh] overflow-y-auto">
-          <div className="p-6 border-b border-gray-200 dark:border-gray-700">
-            <div className="flex items-center justify-between">
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Détails de la Commande</h3>
-              <button
-                onClick={() => setViewingOrder(null)}
-                className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
-              >
-                <X className="w-5 h-5 text-gray-500" />
-              </button>
+                  );
+                })()}
+              </div>
             </div>
           </div>
-          <div className="p-6">
-            {(() => {
-              const order = getOrderById(viewingOrder);
-              if (!order) {
-                return (
-                  <div className="text-center py-8">
-                    <p className="text-gray-500 dark:text-gray-400">Commande non trouvée</p>
-                  </div>
-                );
-              }
-              
-              return (
-                <div className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <p className="text-sm text-gray-600 dark:text-gray-400">Numéro de commande</p>
-                      <p className="font-medium text-gray-900 dark:text-gray-100">{order.number}</p>
-                    </div>
-                    <div>
-                      <p className="text-sm text-gray-600 dark:text-gray-400">Date</p>
-                      <p className="font-medium text-gray-900 dark:text-gray-100">
-                        {new Date(order.orderDate).toLocaleDateString('fr-FR')}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-sm text-gray-600 dark:text-gray-400">Client</p>
-                      <p className="font-medium text-gray-900 dark:text-gray-100">
-                        {order.clientType === 'personne_physique' ? order.clientName : order.client?.name}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-sm text-gray-600 dark:text-gray-400">Total</p>
-                      <p className="font-medium text-gray-900 dark:text-gray-100">{order.totalTTC.toLocaleString()} MAD</p>
-                    </div>
-                  </div>
-                  
-                  <div>
-                    <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">Articles commandés</p>
-                    <div className="space-y-2">
-                      {order.items.map((item, index) => (
-                        <div key={index} className={`p-3 rounded-lg border ${
-                          item.productName === product.name 
-                            ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-700' 
-                            : 'bg-gray-50 dark:bg-gray-700 border-gray-200 dark:border-gray-600'
-                        }`}>
-                          <div className="flex justify-between items-center">
-                            <span className="font-medium text-gray-900 dark:text-gray-100">{item.productName}</span>
-                            <span className="text-sm text-gray-600 dark:text-gray-300">
-                              {item.quantity.toFixed(3)} × {item.unitPrice.toFixed(2)} MAD = {item.total.toFixed(2)} MAD
-                            </span>
-                          </div>
-                          {item.productName === product.name && (
-                            <div className="text-xs text-blue-600 dark:text-blue-400 mt-1">
-                              ← Ce produit dans cette commande
-                            </div>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                  
-                  <div className="flex justify-end space-x-3">
-                    <button
-                      onClick={() => setViewingOrder(null)}
-                      className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
-                    >
-                      Fermer
-                    </button>
-                    <a
-                      href={`/commandes/${order.id}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center space-x-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors"
-                    >
-                      <Eye className="w-4 h-4" />
-                      <span>Voir commande complète</span>
-                    </a>
-                  </div>
-                </div>
-              );
-            })()}
-          </div>
-        </div>
-      </div>
-    )}
-    </div>
+        )}
+
         <div className="flex justify-end pt-6">
           <button
             onClick={onClose}
