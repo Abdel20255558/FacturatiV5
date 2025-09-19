@@ -20,7 +20,7 @@ export default function StockOverviewWidget() {
       .filter(m => m.productId === productId && m.type === 'adjustment')
       .reduce((sum, m) => sum + m.quantity, 0);
 
-    // Total des commandes livrées
+    // Total des commandes livrées (uniquement les commandes, pas les factures)
     const deliveredOrders = orders.reduce((sum, order) => {
       if (order.status === 'livre') {
         return sum + order.items
@@ -51,19 +51,19 @@ export default function StockOverviewWidget() {
   }, 0);
 
   // Mouvements récents (7 derniers jours)
-  const recentOrderMovements = orders?.filter(order => {
+  const recentOrderMovements = (orders || []).filter(order => {
     const orderDate = new Date(order.orderDate);
     const sevenDaysAgo = new Date();
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
     return orderDate >= sevenDaysAgo && order.status === 'livre';
-  }) || [];
+  });
 
-  const recentAdjustments = stockMovements?.filter(movement => {
+  const recentAdjustments = (stockMovements || []).filter(movement => {
     const movementDate = new Date(movement.date);
     const sevenDaysAgo = new Date();
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
     return movementDate >= sevenDaysAgo && movement.type === 'adjustment';
-  }) || [];
+  });
 
   const recentAdjustmentsCount = recentAdjustments.length;
   const recentOrdersCount = recentOrderMovements.length;

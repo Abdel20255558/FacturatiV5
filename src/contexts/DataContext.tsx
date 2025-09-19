@@ -675,7 +675,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
       
       const totalInWords = convertNumberToWords(invoiceData.totalTTC);
       
-      const docRef = await addDoc(collection(db, 'invoices'), {
+      await addDoc(collection(db, 'invoices'), {
         ...invoiceData,
         number: invoiceNumber,
         totalInWords,
@@ -684,26 +684,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
         createdAt: new Date().toISOString()
       });
 
-      // Ajouter les mouvements de stock pour chaque article vendu
-      for (const item of invoiceData.items) {
-        const product = products.find(p => p.name === item.description);
-        if (product) {
-          await addStockMovement({
-            productId: product.id,
-            productName: product.name,
-            type: 'invoice_sale',
-            quantity: -item.quantity, // Négatif pour une sortie
-            previousStock: 0, // Sera calculé par le système
-            newStock: 0, // Sera calculé par le système
-            reason: 'Vente (Facture)',
-            reference: invoiceNumber,
-            userId: user.id,
-            userName: user.name,
-            date: invoiceData.date,
-            adjustmentDateTime: new Date().toISOString()
-          });
-        }
-      }
+      // Note: Le stock n'est plus géré par les factures mais par les commandes
     } catch (error) {
       console.error('Erreur lors de l\'ajout de la facture:', error);
     }

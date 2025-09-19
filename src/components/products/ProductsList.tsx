@@ -35,7 +35,7 @@ export default function ProductsList() {
       .filter(m => m.productId === productId && m.type === 'adjustment')
       .reduce((sum, m) => sum + m.quantity, 0);
 
-    // Total des commandes livrées
+    // Total des commandes livrées (uniquement les commandes, pas les factures)
     const deliveredOrders = orders.reduce((sum, order) => {
       if (order.status === 'livre') {
         return sum + order.items

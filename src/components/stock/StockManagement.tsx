@@ -28,7 +28,8 @@ import html2pdf from 'html2pdf.js';
 
 export default function StockManagement() {
   const { user } = useAuth();
-  const { products, invoices } = useData();
+  const { products } = useData();
+  const { orders } = useOrder();
   const [selectedProduct, setSelectedProduct] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
@@ -153,10 +154,14 @@ export default function StockManagement() {
 
     if (type === 'sales') {
       const salesByProduct = products.map(product => {
-        const totalSales = invoices.reduce((sum, invoice) => {
-          return sum + invoice.items
-            .filter(item => item.description === product.name)
-            .reduce((itemSum, item) => itemSum + item.total, 0);
+        // Calculer les ventes basées sur les commandes livrées
+        const totalSales = orders.reduce((sum, order) => {
+          if (order.status === 'livre') {
+            return sum + order.items
+              .filter(item => item.productName === product.name)
+              .reduce((itemSum, item) => itemSum + item.total, 0);
+          }
+          return sum;
         }, 0);
         return { product: product.name, value: totalSales };
       }).filter(item => item.value > 0);
@@ -171,10 +176,14 @@ export default function StockManagement() {
       }));
     } else {
       const stockByProduct = products.map(product => {
-        const soldQuantity = invoices.reduce((sum, invoice) => {
-          return sum + invoice.items
-            .filter(item => item.description === product.name)
-            .reduce((itemSum, item) => itemSum + item.quantity, 0);
+        // Calculer les quantités vendues basées sur les commandes livrées
+        const soldQuantity = orders.reduce((sum, order) => {
+          if (order.status === 'livre') {
+            return sum + order.items
+              .filter(item => item.productName === product.name)
+              .reduce((itemSum, item) => itemSum + item.quantity, 0);
+          }
+          return sum;
         }, 0);
         
         const remainingStock = Math.max(0, product.stock - soldQuantity);
@@ -196,13 +205,16 @@ export default function StockManagement() {
 
   const generateMarginData = () => {
     return products.map(product => {
-      const salesData = invoices.reduce((acc, invoice) => {
-        invoice.items.forEach(item => {
-          if (item.description === product.name) {
-            acc.quantity += item.quantity;
-            acc.value += item.total;
-          }
-        });
+      // Calculer les ventes basées sur les commandes livrées
+      const salesData = orders.reduce((acc, order) => {
+        if (order.status === 'livre') {
+          order.items.forEach(item => {
+            if (item.productName === product.name) {
+              acc.quantity += item.quantity;
+              acc.value += item.total;
+            }
+          });
+        }
         return acc;
       }, { quantity: 0, value: 0 });
 
@@ -226,21 +238,24 @@ export default function StockManagement() {
       const date = new Date(selectedYear, i, 1);
       const monthName = date.toLocaleDateString('fr-FR', { month: 'short' });
       
-      const monthData = invoices
-        .filter(invoice => {
-          const invoiceDate = new Date(invoice.date);
-          return invoiceDate.getMonth() === i && invoiceDate.getFullYear() === selectedYear;
-        })
-        .reduce((acc, invoice) => {
-          invoice.items.forEach(item => {
-            if (selectedProduct === 'all' || item.description === products.find(p => p.id === selectedProduct)?.name) {
-              acc.quantity += item.quantity;
-              acc.value += item.total;
-            }
-          });
-          acc.ordersCount += 1;
-          return acc;
-        }, { quantity: 0, value: 0, ordersCount: 0 });
+      // Calculer les données basées sur les commandes livrées
+      const monthOrders = orders.filter(order => {
+        const orderDate = new Date(order.orderDate);
+        return orderDate.getMonth() === i && 
+               orderDate.getFullYear() === selectedYear &&
+               order.status === 'livre';
+      });
+      
+      const monthData = monthOrders.reduce((acc, order) => {
+        order.items.forEach(item => {
+          if (selectedProduct === 'all' || item.productName === products.find(p => p.id === selectedProduct)?.name) {
+            acc.quantity += item.quantity;
+            acc.value += item.total;
+          }
+        });
+        acc.ordersCount += 1;
+        return acc;
+      }, { quantity: 0, value: 0, ordersCount: 0 });
 
       months.push({
         month: monthName,
@@ -269,27 +284,30 @@ export default function StockManagement() {
     productNames.forEach(productName => {
       months.forEach(month => {
         const monthIndex = months.indexOf(month);
-        const monthSales = invoices
-          .filter(invoice => {
-            const invoiceDate = new Date(invoice.date);
-            return invoiceDate.getMonth() === monthIndex && 
-                   invoiceDate.getFullYear() === selectedYear;
+        // Calculer les ventes basées sur les commandes livrées
+        const monthSales = orders
+          .filter(order => {
+            const orderDate = new Date(order.orderDate);
+            return orderDate.getMonth() === monthIndex && 
+                   orderDate.getFullYear() === selectedYear &&
+                   order.status === 'livre';
           })
-          .reduce((sum, invoice) => {
-            return sum + invoice.items
-              .filter(item => item.description === productName)
+          .reduce((sum, order) => {
+            return sum + order.items
+              .filter(item => item.productName === productName)
               .reduce((itemSum, item) => itemSum + item.quantity, 0);
           }, 0);
 
-        const monthValue = invoices
-          .filter(invoice => {
-            const invoiceDate = new Date(invoice.date);
-            return invoiceDate.getMonth() === monthIndex && 
-                   invoiceDate.getFullYear() === selectedYear;
+        const monthValue = orders
+          .filter(order => {
+            const orderDate = new Date(order.orderDate);
+            return orderDate.getMonth() === monthIndex && 
+                   orderDate.getFullYear() === selectedYear &&
+                   order.status === 'livre';
           })
-          .reduce((sum, invoice) => {
-            return sum + invoice.items
-              .filter(item => item.description === productName)
+          .reduce((sum, order) => {
+            return sum + order.items
+              .filter(item => item.productName === productName)
               .reduce((itemSum, item) => itemSum + item.total, 0);
           }, 0);
 
@@ -334,13 +352,16 @@ export default function StockManagement() {
       let productQuantitySold = 0;
       let productSalesValue = 0;
       
-      invoices.forEach(invoice => {
-        invoice.items.forEach(item => {
-          if (item.description === product.name) {
-            productQuantitySold += item.quantity;
-            productSalesValue += item.total;
-          }
-        });
+      // Calculer les ventes basées sur les commandes livrées
+      orders.forEach(order => {
+        if (order.status === 'livre') {
+          order.items.forEach(item => {
+            if (item.productName === product.name) {
+              productQuantitySold += item.quantity;
+              productSalesValue += item.total;
+            }
+          });
+        }
       });
       
       totalQuantitySold += productQuantitySold;
@@ -372,7 +393,7 @@ export default function StockManagement() {
   const marginData = generateMarginData();
   const monthlySalesData = generateMonthlySalesData();
   const heatmapData = generateHeatmapData();
-  const availableYears = [...new Set(invoices.map(inv => new Date(inv.date).getFullYear()))].sort((a, b) => b - a);
+  const availableYears = [...new Set(orders.map(order => new Date(order.orderDate).getFullYear()))].sort((a, b) => b - a);
   const months = ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Jun', 'Jul', 'Aoû', 'Sep', 'Oct', 'Nov', 'Déc'];
 
   const tabs = [

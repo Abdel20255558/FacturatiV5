@@ -23,7 +23,7 @@ export default function StockAlertsWidget() {
       .filter(m => m.productId === productId && m.type === 'adjustment')
       .reduce((sum, m) => sum + m.quantity, 0);
 
-    // Total des commandes livrées
+    // Total des commandes livrées (uniquement les commandes, pas les factures)
     const deliveredOrders = orders.reduce((sum, order) => {
       if (order.status === 'livre') {
         return sum + order.items
@@ -71,7 +71,7 @@ export default function StockAlertsWidget() {
       .filter(alert => !dismissedAlerts.has(alert!.id));
 
     setAlerts(newAlerts);
-  }, [products, invoices, stockMovements, dismissedAlerts]);
+  }, [products, orders, stockMovements, dismissedAlerts]);
 
   const dismissAlert = (alertId: string) => {
     setDismissedAlerts(prev => new Set([...prev, alertId]));
