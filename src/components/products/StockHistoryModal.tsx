@@ -108,6 +108,22 @@ export default function StockHistoryModal({ isOpen, onClose, product }: StockHis
   
   const history = generateProductHistory();
   
+  const calculateCurrentStock = () => {
+    const initialStock = product.initialStock || 0;
+    const adjustments = stockMovements
+      .filter(m => m.productId === product.id && m.type === 'adjustment')
+      .reduce((sum, m) => sum + m.quantity, 0);
+    const deliveredOrders = orders.reduce((sum, order) => {
+      if (order.status === 'livre') {
+        return sum + order.items
+          .filter(item => item.productName === product.name)
+          .reduce((itemSum, item) => itemSum + item.quantity, 0);
+      }
+      return sum;
+    }, 0);
+    return initialStock + adjustments - deliveredOrders;
+  };
+
   // Calculer le résumé
   const summary = {
     initialStock: product.initialStock || 0,
@@ -123,22 +139,6 @@ export default function StockHistoryModal({ isOpen, onClose, product }: StockHis
       .filter(m => m.productId === product.id && m.type === 'adjustment')
       .reduce((sum, m) => sum + m.quantity, 0),
     currentStock: calculateCurrentStock()
-  };
-
-  const calculateCurrentStock = () => {
-    const initialStock = product.initialStock || 0;
-    const adjustments = stockMovements
-      .filter(m => m.productId === product.id && m.type === 'adjustment')
-      .reduce((sum, m) => sum + m.quantity, 0);
-    const deliveredOrders = orders.reduce((sum, order) => {
-      if (order.status === 'livre') {
-        return sum + order.items
-          .filter(item => item.productName === product.name)
-          .reduce((itemSum, item) => itemSum + item.quantity, 0);
-      }
-      return sum;
-    }, 0);
-    return initialStock + adjustments - deliveredOrders;
   };
 
   // Filtrer par période
