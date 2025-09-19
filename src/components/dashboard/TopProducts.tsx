@@ -43,27 +43,6 @@ export default function TopProducts() {
     .filter(p => p.sales > 0)
     .sort((a, b) => b.sales - a.sales)
     .slice(0, 3);
-        }
-      });
-    });
-
-    const purchasePrice = Number((product as any).purchasePrice) || 0;
-    return {
-      name: product.name,
-      sales: totalQuantity,
-      revenue: totalRevenue,
-      category: (product as any).category || 'Non catégorisé',
-      unit: (product as any).unit || 'unité',
-      margin: totalRevenue - totalQuantity * purchasePrice,
-      purchasePrice
-    };
-  });
-
-  // Trier par quantité vendue et prendre le top 3
-  const topProducts = productSales
-    .filter(p => p.sales > 0)
-    .sort((a, b) => b.sales - a.sales)
-    .slice(0, 3);
 
   const containerVariants = {
     hidden: { opacity: 0 },
