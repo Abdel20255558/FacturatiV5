@@ -213,6 +213,9 @@ export function OrderProvider({ children }: { children: ReactNode }) {
   const debitStock = async (items: OrderItem[], orderNumber: string) => {
     if (!user) return;
 
+    const order = orders.find(o => o.number === orderNumber);
+    if (!order) return;
+
     for (const item of items) {
       try {
         // Ajouter un mouvement de stock
@@ -221,8 +224,18 @@ export function OrderProvider({ children }: { children: ReactNode }) {
           productName: item.productName,
           type: 'order_out',
           quantity: -item.quantity, // Négatif pour sortie
+          previousStock: 0, // Sera calculé automatiquement
+          newStock: 0, // Sera calculé automatiquement
           reason: 'Commande',
           reference: orderNumber,
+          orderId: order.id,
+          orderDetails: {
+            orderNumber: order.number,
+            clientName: order.clientType === 'personne_physique' ? order.clientName || 'Client particulier' : order.client?.name || 'Client société',
+            orderTotal: order.totalTTC,
+            orderDate: order.orderDate,
+            clientType: order.clientType
+          },
           userId: user.id,
           userName: user.name,
           date: new Date().toISOString().split('T')[0],
@@ -239,6 +252,9 @@ export function OrderProvider({ children }: { children: ReactNode }) {
   const returnStock = async (items: OrderItem[], orderNumber: string) => {
     if (!user) return;
 
+    const order = orders.find(o => o.number === orderNumber);
+    if (!order) return;
+
     for (const item of items) {
       try {
         // Ajouter un mouvement de stock de retour
@@ -247,8 +263,18 @@ export function OrderProvider({ children }: { children: ReactNode }) {
           productName: item.productName,
           type: 'order_cancel_return',
           quantity: item.quantity, // Positif pour retour
+          previousStock: 0, // Sera calculé automatiquement
+          newStock: 0, // Sera calculé automatiquement
           reason: 'Annulation commande',
           reference: orderNumber,
+          orderId: order.id,
+          orderDetails: {
+            orderNumber: order.number,
+            clientName: order.clientType === 'personne_physique' ? order.clientName || 'Client particulier' : order.client?.name || 'Client société',
+            orderTotal: order.totalTTC,
+            orderDate: order.orderDate,
+            clientType: order.clientType
+          },
           userId: user.id,
           userName: user.name,
           date: new Date().toISOString().split('T')[0],

@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useData } from '../../contexts/DataContext';
+import { useOrder } from '../../contexts/OrderContext';
 import { AlertTriangle, Package, X, Bell, TrendingDown } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 export default function StockAlertsWidget() {
-  const { products, invoices, stockMovements } = useData();
+  const { products, stockMovements } = useData();
+  const { orders } = useOrder();
   const [alerts, setAlerts] = useState<any[]>([]);
   const [dismissedAlerts, setDismissedAlerts] = useState<Set<string>>(new Set());
 
@@ -21,14 +23,17 @@ export default function StockAlertsWidget() {
       .filter(m => m.productId === productId && m.type === 'adjustment')
       .reduce((sum, m) => sum + m.quantity, 0);
 
-    // Total des ventes
-    const sales = invoices.reduce((sum, invoice) => {
-      return sum + invoice.items
-        .filter(item => item.description === product.name)
-        .reduce((itemSum, item) => itemSum + item.quantity, 0);
+    // Total des commandes livrées
+    const deliveredOrders = orders.reduce((sum, order) => {
+      if (order.status === 'livre') {
+        return sum + order.items
+          .filter(item => item.productName === product.name)
+          .reduce((itemSum, item) => itemSum + item.quantity, 0);
+      }
+      return sum;
     }, 0);
 
-    return initialStock + adjustments - sales;
+    return initialStock + adjustments - deliveredOrders;
   };
   useEffect(() => {
     // Générer les alertes de stock

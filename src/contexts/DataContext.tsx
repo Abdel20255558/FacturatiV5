@@ -26,6 +26,14 @@ export interface StockMovement {
   newStock: number;
   reason?: string;
   reference?: string; // Numéro de facture, commande, etc.
+  orderId?: string; // ID de la commande liée
+  orderDetails?: {
+    orderNumber: string;
+    clientName: string;
+    orderTotal: number;
+    orderDate: string;
+    clientType: 'personne_physique' | 'societe';
+  };
   userId: string;
   userName: string;
   date: string;

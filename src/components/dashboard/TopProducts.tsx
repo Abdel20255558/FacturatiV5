@@ -1,23 +1,48 @@
 import React from 'react';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { useData } from '../../contexts/DataContext';
+import { useOrder } from '../../contexts/OrderContext';
 import { Package, Trophy, TrendingUp, Star, Award } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 export default function TopProducts() {
   const { t } = useLanguage();
-  const { products, invoices } = useData();
+  const { products } = useData();
+  const { orders } = useOrder();
 
   // Calculer les ventes réelles par produit
   const productSales = (products || []).map(product => {
     let totalQuantity = 0;
     let totalRevenue = 0;
 
-    (invoices || []).forEach(invoice => {
-      (invoice.items || []).forEach(item => {
-        if (item.description === product.name) {
-          totalQuantity += Number(item.quantity) || 0;
-          totalRevenue += Number(item.total) || 0;
+    (orders || []).forEach(order => {
+      if (order.status === 'livre') {
+        (order.items || []).forEach(item => {
+          if (item.productName === product.name) {
+            totalQuantity += Number(item.quantity) || 0;
+            totalRevenue += Number(item.total) || 0;
+          }
+        });
+      }
+    });
+
+    const purchasePrice = Number((product as any).purchasePrice) || 0;
+    return {
+      name: product.name,
+      sales: totalQuantity,
+      revenue: totalRevenue,
+      category: (product as any).category || 'Non catégorisé',
+      unit: (product as any).unit || 'unité',
+      margin: totalRevenue - totalQuantity * purchasePrice,
+      purchasePrice
+    };
+  });
+
+  // Trier par quantité vendue et prendre le top 3
+  const topProducts = productSales
+    .filter(p => p.sales > 0)
+    .sort((a, b) => b.sales - a.sales)
+    .slice(0, 3);
         }
       });
     });

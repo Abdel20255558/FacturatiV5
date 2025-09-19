@@ -107,17 +107,19 @@ export default function StockManagement() {
       let ordersCount = 0;
       const ordersSet = new Set();
 
-      invoices.forEach(invoice => {
-        let hasProduct = false;
-        invoice.items.forEach(item => {
-          if (item.description === product.name) {
-            quantitySold += item.quantity;
-            salesValue += item.total;
-            hasProduct = true;
+      orders.forEach(order => {
+        if (order.status === 'livre') {
+          let hasProduct = false;
+          order.items.forEach(item => {
+            if (item.productName === product.name) {
+              quantitySold += item.quantity;
+              salesValue += item.total;
+              hasProduct = true;
+            }
+          });
+          if (hasProduct) {
+            ordersSet.add(order.id);
           }
-        });
-        if (hasProduct) {
-          ordersSet.add(invoice.id);
         }
       });
 
