@@ -358,7 +358,7 @@ export default function StockHistoryModal({ isOpen, onClose, product }: StockHis
                           {getMovementLabel(movement.type)}
                         </span>
                         <span className={`font-bold ${getMovementColor(movement.quantity)}`}>
-                          {movement.quantity > 0 ? '+' : ''}{movement.quantity.toFixed(3)} {product.unit}
+                          {(movement.quantity ?? 0) > 0 ? '+' : ''}{(movement.quantity ?? 0).toFixed(3)} {product.unit}
                         </span>
                       </div>
                       <div className="flex items-center space-x-4 text-xs text-gray-500 dark:text-gray-400">
@@ -420,7 +420,7 @@ export default function StockHistoryModal({ isOpen, onClose, product }: StockHis
                   
                   <div className="text-right">
                     <div className="text-sm text-gray-500 dark:text-gray-400">
-                      {movement.previousStock.toFixed(3)} → {movement.newStock.toFixed(3)}
+                      {(movement.previousStock ?? 0).toFixed(3)} → {(movement.newStock ?? 0).toFixed(3)}
                     </div>
                     <div className="text-xs text-gray-400 dark:text-gray-500">
                       Stock après mouvement
