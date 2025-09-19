@@ -1,9 +1,11 @@
 import React from 'react';
 import { useData } from '../../contexts/DataContext';
+import { useOrder } from '../../contexts/OrderContext';
 import { Package, TrendingUp, TrendingDown, AlertTriangle, BarChart3 } from 'lucide-react';
 
 export default function StockOverviewWidget() {
-  const { products, invoices, stockMovements } = useData();
+  const { products, stockMovements } = useData();
+  const { orders } = useOrder();
 
   // Calculer le stock actuel selon la formule correcte
   const calculateCurrentStock = (productId: string) => {
@@ -18,14 +20,17 @@ export default function StockOverviewWidget() {
       .filter(m => m.productId === productId && m.type === 'adjustment')
       .reduce((sum, m) => sum + m.quantity, 0);
 
-    // Total des ventes
-    const sales = invoices.reduce((sum, invoice) => {
-      return sum + invoice.items
-        .filter(item => item.description === product.name)
-        .reduce((itemSum, item) => itemSum + item.quantity, 0);
+    // Total des commandes livrées
+    const deliveredOrders = orders.reduce((sum, order) => {
+      if (order.status === 'livre') {
+        return sum + order.items
+          .filter(item => item.productName === product.name)
+          .reduce((itemSum, item) => itemSum + item.quantity, 0);
+      }
+      return sum;
     }, 0);
 
-    return initialStock + adjustments - sales;
+    return initialStock + adjustments - deliveredOrders;
   };
 
   // Calculer les statistiques globales
@@ -46,20 +51,22 @@ export default function StockOverviewWidget() {
   }, 0);
 
   // Mouvements récents (7 derniers jours)
-  const recentMovements = stockMovements?.filter(movement => {
+  const recentOrderMovements = orders?.filter(order => {
+    const orderDate = new Date(order.orderDate);
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+    return orderDate >= sevenDaysAgo && order.status === 'livre';
+  }) || [];
+
+  const recentAdjustments = stockMovements?.filter(movement => {
     const movementDate = new Date(movement.date);
     const sevenDaysAgo = new Date();
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-    return movementDate >= sevenDaysAgo;
+    return movementDate >= sevenDaysAgo && movement.type === 'adjustment';
   }) || [];
 
-  const recentAdjustments = recentMovements.filter(m => m.type === 'adjustment').length;
-  const recentSales = invoices.filter(invoice => {
-    const invoiceDate = new Date(invoice.date);
-    const sevenDaysAgo = new Date();
-    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-    return invoiceDate >= sevenDaysAgo;
-  }).length;
+  const recentAdjustmentsCount = recentAdjustments.length;
+  const recentOrdersCount = recentOrderMovements.length;
 
   const stats = [
     {
@@ -88,11 +95,11 @@ export default function StockOverviewWidget() {
     },
     {
       title: 'Valeur Stock',
-      value: `${totalStockValue.toLocaleString()}`,
-      subtitle: 'MAD (prix d\'achat)',
+      title: 'Commandes (7j)',
+      value: recentOrdersCount,
       icon: BarChart3,
       color: 'from-green-500 to-emerald-600',
-      textColor: 'text-green-600'
+      value: recentAdjustmentsCount,
     }
   ];
 

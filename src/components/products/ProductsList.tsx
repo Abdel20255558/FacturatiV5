@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useData } from '../../contexts/DataContext';
+import { useOrder } from '../../contexts/OrderContext';
 import { useLanguage } from '../../contexts/LanguageContext';
 import AddProductModal from './AddProductModal';
 import EditProductModal from './EditProductModal';
@@ -12,7 +13,8 @@ import StockAlertsWidget from './StockAlertsWidget';
 
 export default function ProductsList() {
   const { t } = useLanguage();
-  const { products, deleteProduct, invoices, stockMovements } = useData();
+  const { products, deleteProduct, stockMovements } = useData();
+  const { orders } = useOrder();
   const [searchTerm, setSearchTerm] = useState('');
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<string | null>(null);
@@ -33,98 +35,76 @@ export default function ProductsList() {
       .filter(m => m.productId === productId && m.type === 'adjustment')
       .reduce((sum, m) => sum + m.quantity, 0);
 
-    // Total des ventes (quantités vendues dans les factures)
-    const sales = invoices.reduce((sum, invoice) => {
-      return sum + invoice.items
-        .filter(item => item.description === product.name)
-        .reduce((itemSum, item) => itemSum + item.quantity, 0);
+    // Total des commandes livrées
+    const deliveredOrders = orders.reduce((sum, order) => {
+      if (order.status === 'livre') {
+        return sum + order.items
+          .filter(item => item.productName === product.name)
+          .reduce((itemSum, item) => itemSum + item.quantity, 0);
+      }
+      return sum;
     }, 0);
 
-    return initialStock + adjustments - sales;
+    return initialStock + adjustments - deliveredOrders;
   };
 
-// Fonction utilitaire
-const formatQuantity = (value: number, unit?: string) => {
-  if (!unit) return value.toString();
-
-  const lowerUnit = unit.toLowerCase();
-  if (lowerUnit === 'kg' || lowerUnit === 'tonne' || lowerUnit === 'tonnes') {
-    return value.toFixed(3).replace('.', ','); // 3 décimales avec virgule
-  }
-  return Math.round(value).toString(); // pas de virgule pour les autres
-};
-  
-  // Obtenir le résumé du stock d'un produit
-  const getProductStockSummary = (productId: string) => {
+  // Calculer les statistiques des commandes pour un produit
+  const getProductOrderStats = (productId: string) => {
     const product = products.find(p => p.id === productId);
-    if (!product) return null;
+    if (!product) return { ordersCount: 0, totalOrdered: 0, totalOrderValue: 0 };
 
-    const productMovements = stockMovements.filter(m => m.productId === productId);
-    
-    // Total des ajustements
-    const totalAdjustments = productMovements
-      .filter(m => m.type === 'adjustment')
-      .reduce((sum, m) => sum + m.quantity, 0);
-
-    // Total des ventes
-    const totalSales = invoices.reduce((sum, invoice) => {
-      return sum + invoice.items
-        .filter(item => item.description === product.name)
-        .reduce((itemSum, item) => itemSum + item.quantity, 0);
-    }, 0);
-
-    const currentStock = calculateCurrentStock(productId);
-    const lastMovement = productMovements.sort((a, b) => 
-      new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-    )[0];
-
-    return {
-      initialStock: product.initialStock || 0,
-      totalSales,
-      totalAdjustments,
-      currentStock,
-      lastMovementDate: lastMovement?.date || product.createdAt
-    };
-  };
-  const getProductStats = (productId: string) => {
-    const product = products.find(p => p.id === productId);
-    if (!product) return { remainingStock: 0, ordersCount: 0, totalOrdered: 0 };
-
-    // Calculer selon la nouvelle formule
-    const remainingStock = calculateCurrentStock(productId);
-    
     let totalOrdered = 0;
+    let totalOrderValue = 0;
     let ordersCount = 0;
     const ordersSet = new Set();
 
-    invoices.forEach(invoice => {
-      let hasProduct = false;
-      invoice.items.forEach(item => {
-        if (item.description === product.name) {
-          totalOrdered += item.quantity;
-          hasProduct = true;
+    orders.forEach(order => {
+      if (order.status === 'livre') {
+        let hasProduct = false;
+        order.items.forEach(item => {
+          if (item.productName === product.name) {
+            totalOrdered += item.quantity;
+            totalOrderValue += item.total;
+            hasProduct = true;
+          }
+        });
+        if (hasProduct) {
+          ordersSet.add(order.id);
         }
-      });
-      if (hasProduct) {
-        ordersSet.add(invoice.id);
       }
     });
 
     ordersCount = ordersSet.size;
-
-    return { remainingStock, ordersCount, totalOrdered };
+    return { ordersCount, totalOrdered, totalOrderValue };
   };
 
+  // Obtenir la dernière commande d'un produit
+  const getLastOrderInfo = (productId: string) => {
+    const product = products.find(p => p.id === productId);
+    if (!product) return null;
+
+    let lastOrder = null;
+    let lastQuantity = 0;
+
+    orders.forEach(order => {
+      if (order.status === 'livre') {
+        order.items.forEach(item => {
+          if (item.productName === product.name) {
+            if (!lastOrder || new Date(order.orderDate) > new Date(lastOrder)) {
+              lastOrder = order.orderDate;
+              lastQuantity = item.quantity;
+            }
+
   const getStatusBadge = (product: typeof products[0]) => {
-    const stats = getProductStats(product.id);
-    if (stats.remainingStock <= 0) {
+    const currentStock = calculateCurrentStock(product.id);
+    if (currentStock <= 0) {
       return (
         <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
           Rupture
         </span>
       );
     }
-    if (stats.remainingStock <= product.minStock) {
+    if (currentStock <= product.minStock) {
       return (
         <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
           Stock Faible
@@ -293,8 +273,10 @@ const formatQuantity = (value: number, unit?: string) => {
             </thead>
             <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
               {filteredProducts.map((product) => {
-                const stats = getProductStats(product.id);
+                const orderStats = getProductOrderStats(product.id);
+                const currentStock = calculateCurrentStock(product.id);
                 const lastAdjustment = getLastStockAdjustment(product.id);
+                const lastOrder = getLastOrderInfo(product.id);
                 
                 return (
                 <tr key={product.id} className="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
@@ -320,24 +302,30 @@ const formatQuantity = (value: number, unit?: string) => {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="text-sm font-medium text-gray-900 dark:text-white">
-                      {stats.ordersCount} commande{stats.ordersCount > 1 ? 's' : ''}
+                      {orderStats.ordersCount} commande{orderStats.ordersCount > 1 ? 's' : ''}
                     </div>
                     <div className="text-xs text-gray-500 dark:text-gray-400">
-    {formatQuantity(stats.totalOrdered, product.unit)} {product.unit || 'unité'} commandé{stats.totalOrdered > 1 ? 's' : ''}
+                      {formatQuantity(orderStats.totalOrdered, product.unit)} {product.unit || 'unité'} • {orderStats.totalOrderValue.toLocaleString()} MAD
+                    </div>
+                    {lastOrder && (
+                      <div className="text-xs text-blue-600 dark:text-blue-400">
+                        Dernière: {new Date(lastOrder.date).toLocaleDateString('fr-FR')}
+                      </div>
+                    )}
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center space-x-2">
                       <span className={`text-sm font-medium ${
-                        stats.remainingStock <= product.minStock ? 'text-red-600' : 'text-gray-900 dark:text-white'
+                        currentStock <= product.minStock ? 'text-red-600' : 'text-gray-900 dark:text-white'
                       }`}>
-      {formatQuantity(stats.remainingStock, product.unit)} {product.unit || 'unité'}
+                        {formatQuantity(currentStock, product.unit)} {product.unit || 'unité'}
                       </span>
-                      {stats.remainingStock <= product.minStock && (
+                      {currentStock <= product.minStock && (
                         <AlertTriangle className="w-4 h-4 text-red-500" />
                       )}
                     </div>
-                    {stats.remainingStock <= 0 && (
+                    {currentStock <= 0 && (
                       <div className="text-xs text-red-600 dark:text-red-400 font-medium">Rupture de stock</div>
                     )}
                   </td>
