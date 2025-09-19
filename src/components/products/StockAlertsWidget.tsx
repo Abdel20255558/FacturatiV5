@@ -5,7 +5,7 @@ import { AlertTriangle, Package, X, Bell, TrendingDown } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 export default function StockAlertsWidget() {
-  const { products, stockMovements } = useData();
+  const { products, stockMovements, invoices } = useData();
   const { orders } = useOrder();
   const [alerts, setAlerts] = useState<any[]>([]);
   const [dismissedAlerts, setDismissedAlerts] = useState<Set<string>>(new Set());
