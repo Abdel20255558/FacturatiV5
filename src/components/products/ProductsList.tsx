@@ -94,6 +94,13 @@ export default function ProductsList() {
               lastOrder = order.orderDate;
               lastQuantity = item.quantity;
             }
+          }
+        });
+      }
+    });
+
+    return lastOrder ? { date: lastOrder, quantity: lastQuantity } : null;
+  };
 
   const getStatusBadge = (product: typeof products[0]) => {
     const currentStock = calculateCurrentStock(product.id);
@@ -141,6 +148,26 @@ export default function ProductsList() {
     return {
       quantity: summary.totalAdjustments,
       date: summary.lastMovementDate
+    };
+  };
+
+  const formatQuantity = (quantity: number, unit: string) => {
+    return quantity.toLocaleString();
+  };
+
+  const getProductStockSummary = (productId: string) => {
+    const movements = stockMovements.filter(m => m.productId === productId);
+    if (movements.length === 0) return null;
+
+    const totalAdjustments = movements
+      .filter(m => m.type === 'adjustment')
+      .reduce((sum, m) => sum + m.quantity, 0);
+
+    const lastMovement = movements.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0];
+
+    return {
+      totalAdjustments,
+      lastMovementDate: lastMovement.date
     };
   };
 
@@ -312,7 +339,6 @@ export default function ProductsList() {
                         Dernière: {new Date(lastOrder.date).toLocaleDateString('fr-FR')}
                       </div>
                     )}
-                    </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center space-x-2">
