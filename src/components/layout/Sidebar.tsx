@@ -72,12 +72,12 @@ export default function Sidebar({ open, setOpen, onUpgrade }: SidebarProps) {
   // Menus
   const primaryMenu = [
     { icon: LayoutDashboard, label: t('dashboard'), path: '/dashboard', permission: 'dashboard' },
-    { icon: FileText, label: t('invoices'), path: '/invoices', permission: 'invoices' },
-    { icon: FileCheck, label: 'Devis', path: '/quotes', permission: 'quotes' },
-    { icon: Users, label: t('clients'), path: '/clients', permission: 'clients' },
     { icon: Package, label: t('products'), path: '/products', permission: 'products' },
     { icon: ShoppingBag, label: 'Commandes', path: '/commandes', permission: 'orders' },
-    { icon: Truck, label: 'Fournisseurs', path: '/suppliers', permission: 'suppliers' }
+    { icon: Users, label: t('clients'), path: '/clients', permission: 'clients' },
+    { icon: Truck, label: 'Fournisseurs', path: '/suppliers', permission: 'suppliers' },
+    { icon: FileText, label: t('invoices'), path: '/invoices', permission: 'invoices' },
+    { icon: FileCheck, label: 'Devis', path: '/quotes', permission: 'quotes' }
   ];
 
   const gestionMenu = [
