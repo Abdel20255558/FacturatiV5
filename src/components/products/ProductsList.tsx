@@ -9,6 +9,7 @@ import StockHistoryModal from './StockHistoryModal';
 import { Plus, Search, Edit, Trash2, AlertTriangle, Package, RotateCcw, History, TrendingUp, TrendingDown, Info, HelpCircle } from 'lucide-react';
 import StockOverviewWidget from './StockOverviewWidget';
 import StockAlertsWidget from './StockAlertsWidget';
+import ProductActionsGuide from './ProductActionsGuide';
 
 
 export default function ProductsList() {
@@ -188,6 +189,7 @@ export default function ProductsList() {
       {/* Search and Stats */}
       <StockOverviewWidget />
       <StockAlertsWidget />
+      <ProductActionsGuide />
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
         <div className="lg:col-span-2">
